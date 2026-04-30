@@ -1,10 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>BP Monitoring System | Live</title>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BP Monitoring System</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
@@ -12,248 +15,1601 @@
 
   <style>
     :root {
-      --bg:#0a0f1a;--bg2:#0f1829;--surface:#111d2e;--surface2:#162035;
-      --border:#1e3050;--border2:#243860;--primary:#00c2ff;
-      --primary-dim:rgba(0,194,255,0.12);--accent:#00ffa3;
-      --accent-dim:rgba(0,255,163,0.10);--red:#ff4d6d;
-      --red-dim:rgba(255,77,109,0.12);--orange:#ff9f43;
-      --orange-dim:rgba(255,159,67,0.12);--purple:#a78bfa;
-      --text:#e2eaf5;--text-sub:#6b8aad;--text-dim:#3d5a7a;
-      --green:#00ffa3;--radius:14px;--radius-sm:8px;
-      --glow-blue:0 0 24px rgba(0,194,255,0.25);
-      --glow-green:0 0 24px rgba(0,255,163,0.20);
-      --glow-red:0 0 24px rgba(255,77,109,0.20);
+      --bg: #0a0f1a;
+      --bg2: #0f1829;
+      --surface: #111d2e;
+      --surface2: #162035;
+      --border: #1e3050;
+      --border2: #243860;
+      --primary: #00c2ff;
+      --primary-dim: rgba(0, 194, 255, 0.12);
+      --accent: #00ffa3;
+      --accent-dim: rgba(0, 255, 163, 0.10);
+      --red: #ff4d6d;
+      --red-dim: rgba(255, 77, 109, 0.12);
+      --orange: #ff9f43;
+      --purple: #a78bfa;
+      --text: #e2eaf5;
+      --text-sub: #6b8aad;
+      --text-dim: #3d5a7a;
+      --green: #00ffa3;
+      --radius: 14px;
+      --radius-sm: 8px;
+      --glow-blue: 0 0 24px rgba(0, 194, 255, 0.25);
+      --glow-green: 0 0 24px rgba(0, 255, 163, 0.20);
     }
-    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Space Grotesk',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;
-      background-image:radial-gradient(ellipse 80% 50% at 50% -10%,rgba(0,194,255,0.07) 0%,transparent 60%)}
-    header{background:rgba(10,15,26,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);
-      padding:0 36px;height:68px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200}
-    .brand{display:flex;align-items:center;gap:14px}
-    .brand-icon{width:42px;height:42px;background:linear-gradient(135deg,rgba(0,194,255,0.2),rgba(0,255,163,0.15));
-      border:1px solid rgba(0,194,255,0.3);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px}
-    .brand h1{font-size:1.1rem;font-weight:700}
-    #fb-status{display:flex;align-items:center;gap:7px;padding:6px 14px;border-radius:20px;font-size:0.72rem;font-weight:600;border:1px solid var(--border2);background:var(--surface)}
-    #fb-status.connected{border-color:rgba(0,255,163,0.4);color:var(--accent)}
-    #fb-status.disconnected{border-color:rgba(255,77,109,0.4);color:var(--red)}
-    #fb-status.connecting{border-color:rgba(0,194,255,0.4);color:var(--primary)}
-    .fb-dot{width:7px;height:7px;border-radius:50%;background:currentColor}
-    .fb-dot.pulse{animation:blink 1.2s infinite}
-    @keyframes blink{0%,100%{opacity:1}50%{opacity:0.2}}
-    main{max-width:1380px;margin:0 auto;padding:28px 22px 70px;display:flex;flex-direction:column;gap:22px}
-    .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:22px 26px}
-    .slabel{font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:var(--text-sub);margin-bottom:12px;display:flex;align-items:center;gap:10px}
-    .slabel::after{content:'';flex:1;height:1px;background:var(--border)}
-    .readings-row{display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:16px}
-    .rcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;position:relative;transition:all 0.2s}
-    .rcard.sys:hover{box-shadow:var(--glow-red)}.rcard.dia:hover{box-shadow:var(--glow-blue)}.rcard.pls:hover{box-shadow:var(--glow-green)}
-    .rv{font-family:'JetBrains Mono',monospace;font-size:3.2rem;font-weight:600;line-height:1}
-    .rcard.sys .rv{color:var(--red)}.rcard.dia .rv{color:var(--primary)}.rcard.pls .rv{color:var(--accent)}
-    .status-card{text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center}
-    #status-badge{padding:8px 16px;border-radius:20px;font-weight:700;margin:10px 0}
-    .sn{background:rgba(0,255,163,0.1);color:var(--accent)}.sl{background:rgba(0,194,255,0.1);color:var(--primary)}.sh{background:rgba(255,159,67,0.1);color:var(--orange)}.sc{background:rgba(255,77,109,0.1);color:var(--red)}
-    .btn{padding:10px 18px;border-radius:var(--radius-sm);font-weight:600;cursor:pointer;border:none;transition:0.2s}
-    .btn-primary{background:var(--primary);color:#000}.btn-success{background:var(--accent);color:#000}.btn-danger{background:rgba(255,77,109,0.1);color:var(--red);border:1px solid var(--red)}
-    table{width:100%;border-collapse:collapse;font-size:0.85rem}
-    th{text-align:left;padding:12px;color:var(--text-sub);border-bottom:1px solid var(--border)}
-    td{padding:12px;border-bottom:1px solid var(--border)}
-    .chart-wrapper{height:250px}
-    #toast{position:fixed;bottom:20px;right:20px;padding:12px 20px;border-radius:8px;opacity:0;transition:0.3s;z-index:999}
-    #toast.show{opacity:1}
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    body {
+      font-family: 'Space Grotesk', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      background-image: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(0, 194, 255, 0.07) 0%, transparent 60%),
+        radial-gradient(ellipse 40% 30% at 80% 80%, rgba(0, 255, 163, 0.04) 0%, transparent 50%)
+    }
+
+    header {
+      background: rgba(10, 15, 26, 0.85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 36px;
+      height: 68px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 200
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px
+    }
+
+    .brand-icon {
+      width: 42px;
+      height: 42px;
+      background: linear-gradient(135deg, rgba(0, 194, 255, 0.2), rgba(0, 255, 163, 0.15));
+      border: 1px solid rgba(0, 194, 255, 0.3);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px
+    }
+
+    .brand h1 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: -0.01em
+    }
+
+    .brand p {
+      font-size: 0.68rem;
+      color: var(--text-sub);
+      letter-spacing: 0.08em;
+      text-transform: uppercase
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px
+    }
+
+    #fb-status {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      border: 1px solid var(--border2);
+      background: var(--surface);
+      transition: all 0.4s
+    }
+
+    #fb-status.connected {
+      border-color: rgba(0, 255, 163, 0.4);
+      color: var(--accent)
+    }
+
+    #fb-status.disconnected {
+      border-color: rgba(255, 77, 109, 0.4);
+      color: var(--red)
+    }
+
+    #fb-status.connecting {
+      border-color: rgba(0, 194, 255, 0.4);
+      color: var(--primary)
+    }
+
+    .fb-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+      flex-shrink: 0
+    }
+
+    .fb-dot.pulse-anim {
+      animation: blink 1.2s infinite
+    }
+
+    @keyframes blink {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: 0.2
+      }
+    }
+
+    #header-clock {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem;
+      color: var(--text-sub)
+    }
+
+    main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 28px 22px 70px;
+      display: flex;
+      flex-direction: column;
+      gap: 22px
+    }
+
+    .slabel {
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-sub);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px
+    }
+
+    .slabel::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border)
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px 26px
+    }
+
+    .patient-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px
+    }
+
+    .fg {
+      display: flex;
+      flex-direction: column;
+      gap: 5px
+    }
+
+    .fg label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--text-sub)
+    }
+
+    .fg input {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 9px 12px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.9rem;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s
+    }
+
+    .fg input::placeholder {
+      color: var(--text-dim);
+      font-weight: 400
+    }
+
+    .fg input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(0, 194, 255, 0.12)
+    }
+
+    .fg input[readonly] {
+      color: var(--text-sub);
+      cursor: default
+    }
+
+    .radio-group {
+      display: flex;
+      gap: 16px;
+      padding-top: 4px
+    }
+
+    .radio-option {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer
+    }
+
+    .radio-option input[type=radio] {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--border2);
+      border-radius: 50%;
+      background: var(--bg2);
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative
+    }
+
+    .radio-option input[type=radio]:checked {
+      border-color: var(--primary);
+      background: var(--primary);
+      box-shadow: inset 0 0 0 3px var(--bg2), 0 0 8px rgba(0, 194, 255, 0.3)
+    }
+
+    .radio-option span {
+      font-size: 0.85rem;
+      color: var(--text-sub);
+      font-weight: 500;
+      transition: color 0.2s
+    }
+
+    .radio-option input[type=radio]:checked+span {
+      color: var(--text)
+    }
+
+    /* ── Hero BPM card ── */
+    .readings-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 18px
+    }
+
+    @media(max-width:900px) {
+      .readings-row {
+        grid-template-columns: 1fr 1fr
+      }
+    }
+
+    @media(max-width:640px) {
+      .readings-row {
+        grid-template-columns: 1fr
+      }
+    }
+
+    .rcard {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px 24px;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s, box-shadow 0.2s
+    }
+
+    .rcard:hover {
+      transform: translateY(-2px)
+    }
+
+    .rcard::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      border-radius: var(--radius) var(--radius) 0 0
+    }
+
+    .rcard.pls::before {
+      background: linear-gradient(90deg, var(--accent), #80ffcf)
+    }
+
+    .rcard.status-card::before {
+      background: linear-gradient(90deg, var(--purple), #d8b4fe)
+    }
+
+    .rcard.pls:hover {
+      box-shadow: var(--glow-green)
+    }
+
+    .rcard.bmi-card::before {
+      background: linear-gradient(90deg, var(--primary), #80d4ff)
+    }
+
+    .rcard.bmi-card:hover {
+      box-shadow: var(--glow-blue)
+    }
+
+    .bmi-inputs {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 14px
+    }
+
+    .bmi-inputs .bmi-row {
+      display: flex;
+      gap: 8px;
+      align-items: center
+    }
+
+    .bmi-inputs input {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 7px 10px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.85rem;
+      color: var(--text);
+      outline: none;
+      width: 100%;
+      transition: border-color 0.2s
+    }
+
+    .bmi-inputs input::placeholder {
+      color: var(--text-dim);
+      font-weight: 400
+    }
+
+    .bmi-inputs input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(0, 194, 255, 0.12)
+    }
+
+    .bmi-btn {
+      padding: 8px 16px;
+      border-radius: var(--radius-sm);
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+      width: 100%;
+      background: linear-gradient(135deg, rgba(0, 194, 255, 0.85), rgba(0, 120, 200, 0.85));
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(0, 194, 255, 0.2);
+      letter-spacing: 0.02em;
+      margin-top: 4px
+    }
+
+    .bmi-btn:hover {
+      box-shadow: 0 6px 20px rgba(0, 194, 255, 0.35);
+      transform: translateY(-1px)
+    }
+
+    .bmi-btn:active {
+      transform: scale(0.97)
+    }
+
+    .bmi-result {
+      margin-top: 10px;
+      text-align: center
+    }
+
+    .bmi-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 2.6rem;
+      font-weight: 600;
+      color: var(--primary);
+      line-height: 1
+    }
+
+    .bmi-category {
+      margin-top: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 3px 12px;
+      border-radius: 16px;
+      display: inline-block
+    }
+
+    .rl {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-sub);
+      margin-bottom: 10px
+    }
+
+    .rv {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 4.5rem;
+      font-weight: 600;
+      line-height: 1;
+      letter-spacing: -0.03em;
+      transition: color 0.5s
+    }
+
+    .rcard.pls .rv {
+      color: var(--accent)
+    }
+
+    .ru {
+      font-size: 0.8rem;
+      color: var(--text-sub);
+      margin-top: 6px;
+      font-weight: 500
+    }
+
+    .ricon {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      font-size: 2.2rem;
+      opacity: 0.08
+    }
+
+    .src-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 12px;
+      padding: 3px 9px;
+      border-radius: 10px;
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase
+    }
+
+    .src-firebase {
+      background: rgba(255, 196, 0, 0.12);
+      color: #ffc400;
+      border: 1px solid rgba(255, 196, 0, 0.25)
+    }
+
+    .src-sim {
+      background: rgba(167, 139, 250, 0.10);
+      color: var(--purple);
+      border: 1px solid rgba(167, 139, 250, 0.2)
+    }
+
+    .src-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: currentColor;
+      animation: blink 1.4s infinite
+    }
+
+    /* status card */
+    .status-inner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 12px;
+      height: 100%;
+      min-height: 160px
+    }
+
+    #status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 22px;
+      border-radius: 30px;
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      transition: all 0.4s
+    }
+
+    .sn {
+      background: rgba(0, 255, 163, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(0, 255, 163, 0.3)
+    }
+
+    .sl {
+      background: rgba(0, 194, 255, 0.15);
+      color: var(--primary);
+      border: 1px solid rgba(0, 194, 255, 0.3)
+    }
+
+    .sh {
+      background: rgba(255, 159, 67, 0.15);
+      color: var(--orange);
+      border: 1px solid rgba(255, 159, 67, 0.3)
+    }
+
+    .sc {
+      background: rgba(255, 77, 109, 0.15);
+      color: var(--red);
+      border: 1px solid rgba(255, 77, 109, 0.4);
+      animation: critical-pulse 1.5s infinite
+    }
+
+    @keyframes critical-pulse {
+
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 rgba(255, 77, 109, 0.4)
+      }
+
+      50% {
+        box-shadow: 0 0 0 10px rgba(255, 77, 109, 0)
+      }
+    }
+
+    #status-desc {
+      font-size: 0.8rem;
+      color: var(--text-sub);
+      max-width: 200px;
+      line-height: 1.6
+    }
+
+    #status-ts {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--text-dim)
+    }
+
+    #last-fb-update {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--text-dim)
+    }
+
+    /* controls */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 10px 18px;
+      border-radius: var(--radius-sm);
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+      white-space: nowrap;
+      letter-spacing: 0.01em
+    }
+
+    .btn:active {
+      transform: scale(0.96)
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, rgba(0, 255, 163, 0.9), rgba(0, 180, 100, 0.9));
+      color: #001a0e;
+      box-shadow: 0 4px 18px rgba(0, 255, 163, 0.20)
+    }
+
+    .btn-success:hover {
+      box-shadow: 0 6px 24px rgba(0, 255, 163, 0.35);
+      transform: translateY(-1px)
+    }
+
+    .btn-danger {
+      background: rgba(255, 77, 109, 0.15);
+      color: var(--red);
+      border: 1px solid rgba(255, 77, 109, 0.3)
+    }
+
+    .btn-danger:hover {
+      background: rgba(255, 77, 109, 0.22)
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--text-sub);
+      border: 1px solid var(--border2)
+    }
+
+    .btn-outline:hover {
+      border-color: var(--primary);
+      color: var(--primary)
+    }
+
+    #data-mode-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 6px
+    }
+
+    .mode-btn {
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      border: 1px solid var(--border2);
+      background: transparent;
+      color: var(--text-sub);
+      font-family: 'Space Grotesk', sans-serif;
+      transition: all 0.2s
+    }
+
+    .mode-btn.active-firebase {
+      border-color: #ffc400;
+      color: #ffc400;
+      background: rgba(255, 196, 0, 0.08)
+    }
+
+    .mode-btn.active-sim {
+      border-color: var(--purple);
+      color: var(--purple);
+      background: rgba(167, 139, 250, 0.08)
+    }
+
+    /* chart + table */
+    .grid2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px
+    }
+
+    @media(max-width:800px) {
+      .grid2 {
+        grid-template-columns: 1fr
+      }
+    }
+
+    .chart-card {
+      padding: 22px 24px 18px
+    }
+
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 8px
+    }
+
+    .chart-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--text)
+    }
+
+    .chart-legend {
+      display: flex;
+      gap: 16px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-sub)
+    }
+
+    .ldot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 4px
+    }
+
+    .chart-wrapper {
+      position: relative;
+      height: 240px
+    }
+
+    .table-wrapper {
+      overflow-x: auto
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem
+    }
+
+    thead tr {
+      background: var(--bg2)
+    }
+
+    th {
+      padding: 10px 14px;
+      text-align: left;
+      font-size: 0.62rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      color: var(--text-sub);
+      border-bottom: 1px solid var(--border)
+    }
+
+    td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+      font-size: 0.82rem
+    }
+
+    tbody tr:last-child td {
+      border-bottom: none
+    }
+
+    tbody tr:hover {
+      background: rgba(0, 194, 255, 0.03)
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 9px;
+      border-radius: 10px;
+      font-size: 0.68rem;
+      font-weight: 700
+    }
+
+    .bn {
+      background: rgba(0, 255, 163, 0.12);
+      color: var(--accent)
+    }
+
+    .bl {
+      background: rgba(0, 194, 255, 0.12);
+      color: var(--primary)
+    }
+
+    .bh {
+      background: rgba(255, 159, 67, 0.12);
+      color: var(--orange)
+    }
+
+    .bc {
+      background: rgba(255, 77, 109, 0.12);
+      color: var(--red)
+    }
+
+    .src-cell {
+      font-size: 0.62rem;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace
+    }
+
+    .src-cell.fb {
+      color: #ffc400
+    }
+
+    .src-cell.sm {
+      color: var(--purple)
+    }
+
+    @keyframes numPop {
+      0% {
+        transform: scale(1.12);
+        filter: brightness(1.6)
+      }
+
+      100% {
+        transform: scale(1);
+        filter: brightness(1)
+      }
+    }
+
+    .num-pop {
+      animation: numPop 0.5s ease
+    }
+
+    #toast {
+      position: fixed;
+      bottom: 26px;
+      right: 26px;
+      padding: 11px 20px;
+      border-radius: 10px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: all 0.3s;
+      z-index: 9999;
+      pointer-events: none;
+      max-width: 320px
+    }
+
+    #toast.info {
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      color: var(--text)
+    }
+
+    #toast.success {
+      background: rgba(0, 255, 163, 0.15);
+      border: 1px solid rgba(0, 255, 163, 0.3);
+      color: var(--accent)
+    }
+
+    #toast.error {
+      background: rgba(255, 77, 109, 0.15);
+      border: 1px solid rgba(255, 77, 109, 0.3);
+      color: var(--red)
+    }
+
+    #toast.show {
+      opacity: 1;
+      transform: translateY(0)
+    }
+
+    footer {
+      text-align: center;
+      padding: 18px;
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      border-top: 1px solid var(--border)
+    }
+
+    /* ── Tablet ── */
+    @media(max-width:800px) {
+      .grid2 {
+        grid-template-columns: 1fr
+      }
+    }
+
+    /* ── Mobile ── */
+    @media(max-width:640px) {
+
+      /* Header: compact, no overflow */
+      header {
+        padding: 0 12px;
+        height: auto;
+        min-height: 56px;
+        flex-wrap: wrap;
+        gap: 6px;
+        padding-top: 10px;
+        padding-bottom: 10px
+      }
+
+      .brand {
+        gap: 10px
+      }
+
+      .brand-icon {
+        width: 34px;
+        height: 34px;
+        font-size: 16px;
+        border-radius: 8px
+      }
+
+      .brand h1 {
+        font-size: 0.92rem
+      }
+
+      .brand p {
+        font-size: 0.58rem;
+        letter-spacing: 0.06em
+      }
+
+      .header-right {
+        gap: 10px;
+        width: 100%;
+        justify-content: space-between
+      }
+
+      #fb-status {
+        padding: 4px 10px;
+        font-size: 0.64rem
+      }
+
+      #header-clock {
+        font-size: 0.72rem
+      }
+
+      /* Main container */
+      main {
+        padding: 14px 10px 60px;
+        gap: 18px
+      }
+
+      /* Section labels */
+      .slabel {
+        font-size: 0.6rem;
+        margin-bottom: 8px
+      }
+
+      /* Cards */
+      .card {
+        padding: 14px 12px;
+        border-radius: 12px
+      }
+
+      /* Patient info: single column */
+      .patient-grid {
+        grid-template-columns: 1fr;
+        gap: 12px
+      }
+
+      .fg input {
+        padding: 10px 12px;
+        font-size: 0.88rem;
+        border-radius: 8px
+      }
+
+      .fg label {
+        font-size: 0.62rem
+      }
+
+      .radio-group {
+        gap: 20px;
+        padding-top: 6px
+      }
+
+      .radio-option span {
+        font-size: 0.88rem
+      }
+
+      .radio-option input[type=radio] {
+        width: 18px;
+        height: 18px
+      }
+
+      /* Readings row: single column, centered */
+      .readings-row {
+        grid-template-columns: 1fr;
+        gap: 14px
+      }
+
+      /* BPM hero card */
+      .rcard {
+        padding: 22px 18px;
+        border-radius: 12px
+      }
+
+      .rcard:hover {
+        transform: none
+      }
+
+      .rv {
+        font-size: 3.2rem
+      }
+
+      .ru {
+        font-size: 0.72rem
+      }
+
+      .rl {
+        font-size: 0.6rem;
+        margin-bottom: 8px
+      }
+
+      .ricon {
+        font-size: 1.8rem;
+        top: 12px;
+        right: 12px
+      }
+
+      .src-tag {
+        font-size: 0.58rem;
+        padding: 3px 8px
+      }
+
+      /* BMI card mobile */
+      .bmi-val {
+        font-size: 2.2rem
+      }
+
+      .bmi-inputs {
+        gap: 8px;
+        margin-top: 10px
+      }
+
+      .bmi-inputs input {
+        padding: 10px 12px;
+        font-size: 0.88rem
+      }
+
+      .bmi-btn {
+        padding: 11px 16px;
+        font-size: 0.82rem
+      }
+
+      .bmi-category {
+        font-size: 0.72rem;
+        padding: 4px 14px
+      }
+
+      /* Status card */
+      .status-inner {
+        min-height: 130px;
+        gap: 10px
+      }
+
+      #status-badge {
+        padding: 8px 16px;
+        font-size: 0.9rem
+      }
+
+      #status-desc {
+        font-size: 0.75rem;
+        max-width: 260px
+      }
+
+      /* Controls section */
+      #data-mode-row {
+        gap: 8px
+      }
+
+      .mode-btn {
+        padding: 7px 14px;
+        font-size: 0.7rem
+      }
+
+      .btn {
+        padding: 10px 14px;
+        font-size: 0.78rem;
+        border-radius: 10px;
+        width: 100%;
+        justify-content: center
+      }
+
+      /* Chart */
+      .chart-card {
+        padding: 14px 12px 12px
+      }
+
+      .chart-header {
+        margin-bottom: 10px
+      }
+
+      .chart-title {
+        font-size: 0.82rem
+      }
+
+      .chart-wrapper {
+        height: 200px
+      }
+
+      /* Table */
+      th {
+        padding: 8px 10px;
+        font-size: 0.58rem
+      }
+
+      td {
+        padding: 8px 10px;
+        font-size: 0.75rem
+      }
+
+      .badge {
+        font-size: 0.62rem;
+        padding: 2px 7px
+      }
+
+      .src-cell {
+        font-size: 0.58rem
+      }
+
+      /* Toast */
+      #toast {
+        bottom: 14px;
+        right: 14px;
+        left: 14px;
+        max-width: none;
+        font-size: 0.78rem;
+        text-align: center;
+        border-radius: 12px
+      }
+
+      /* Footer */
+      footer {
+        padding: 14px 10px;
+        font-size: 0.62rem
+      }
+    }
+
+    /* ── Very small phones (< 380px) ── */
+    @media(max-width:380px) {
+      .rv {
+        font-size: 2.6rem
+      }
+
+      .bmi-val {
+        font-size: 1.8rem
+      }
+
+      header {
+        padding: 8px 8px
+      }
+
+      main {
+        padding: 10px 6px 50px
+      }
+
+      .card {
+        padding: 12px 10px
+      }
+
+      .rcard {
+        padding: 18px 14px
+      }
+
+      #status-badge {
+        font-size: 0.8rem;
+        padding: 7px 12px
+      }
+    }
   </style>
 </head>
+
 <body>
 
-<header>
-  <div class="brand">
-    <div class="brand-icon">🫀</div>
-    <div><h1>BP Monitor</h1><p style="font-size:0.6rem;color:var(--text-dim)">LIVE CLOUD SYNC</p></div>
-  </div>
-  <div id="fb-status" class="connecting">
-    <span class="fb-dot pulse"></span>
-    <span id="fb-status-text">Initializing…</span>
-  </div>
-</header>
-
-<main>
-  <div class="readings-row">
-    <div class="rcard sys">
-      <div style="font-size:0.7rem;font-weight:700;color:var(--text-sub)">SYSTOLIC</div>
-      <div class="rv" id="sysVal">--</div>
-      <div style="color:var(--text-dim)">mmHg</div>
+  <header>
+    <div class="brand">
+      <div class="brand-icon">🫀</div>
+      <div>
+        <h1>BP Monitoring System</h1>
+        <p>IoT · Firebase Live · Heart Rate Dashboard</p>
+      </div>
     </div>
-    <div class="rcard dia">
-      <div style="font-size:0.7rem;font-weight:700;color:var(--text-sub)">DIASTOLIC</div>
-      <div class="rv" id="diaVal">--</div>
-      <div style="color:var(--text-dim)">mmHg</div>
+    <div class="header-right">
+      <div id="fb-status" class="connecting">
+        <span class="fb-dot pulse-anim"></span>
+        <span id="fb-status-text">Connecting…</span>
+      </div>
+      <span id="header-clock"></span>
     </div>
-    <div class="rcard pls">
-      <div style="font-size:0.7rem;font-weight:700;color:var(--text-sub)">PULSE</div>
-      <div class="rv" id="pulseVal">--</div>
-      <div style="color:var(--text-dim)">bpm</div>
+  </header>
+
+  <main>
+    <!-- Patient Info -->
+    <div>
+      <div class="slabel">👤 Patient Information</div>
+      <div class="card">
+        <div class="patient-grid">
+          <div class="fg"><label>Patient Name</label><input id="patientName" placeholder="Enter patient name" /></div>
+          <div class="fg"><label>Age</label><input id="patientAge" type="number" placeholder="e.g. 30" /></div>
+          <div class="fg">
+            <label>Gender</label>
+            <div class="radio-group">
+              <label class="radio-option"><input type="radio" name="gender" id="genderMale"
+                  value="Male" /><span>Male</span></label>
+              <label class="radio-option"><input type="radio" name="gender" id="genderFemale"
+                  value="Female" /><span>Female</span></label>
+            </div>
+          </div>
+          <div class="fg"><label>Date</label><input id="patientDate" readonly /></div>
+          <div class="fg"><label>Patient ID</label><input id="patientId" placeholder="e.g. PT-0001" /></div>
+          <div class="fg"><label>Attending Doctor</label><input id="doctorName" placeholder="e.g. Dr. Khan" /></div>
+        </div>
+      </div>
     </div>
-    <div class="rcard status-card">
-      <div id="status-badge" class="sl">Waiting...</div>
-      <div id="status-desc" style="font-size:0.8rem;color:var(--text-sub)">Connecting to Firebase...</div>
+
+    <!-- Live Readings -->
+    <div>
+      <div class="slabel">📡 Live Firebase Readings</div>
+      <div class="readings-row">
+        <!-- Pulse BPM -->
+        <div class="rcard pls">
+          <div class="rl">Live Heart Rate (BPM)</div>
+          <div class="rv" id="pulseVal">--</div>
+          <div class="ru">beats per minute · from <code style="font-size:0.7rem;color:var(--primary)">/live/bpm</code>
+          </div>
+          <div class="ricon">💚</div>
+          <span class="src-tag src-firebase" id="pls-src-tag"><span class="src-dot"></span> Waiting…</span>
+        </div>
+        <!-- BMI Calculator -->
+        <div class="rcard bmi-card">
+          <div class="rl">BMI Calculator</div>
+          <div class="ricon">⚖️</div>
+          <div class="bmi-inputs">
+            <div class="bmi-row">
+              <input type="number" id="bmiWeight" placeholder="Weight (kg)" step="0.1" min="1" />
+            </div>
+            <div class="bmi-row">
+              <input type="number" id="bmiHeight" placeholder="Height (cm)" step="0.1" min="1" />
+            </div>
+            <button class="bmi-btn" onclick="calculateBMI()">📐 Calculate BMI</button>
+          </div>
+          <div class="bmi-result">
+            <div class="bmi-val" id="bmiVal">--</div>
+            <span class="bmi-category" id="bmiCategory" style="display:none"></span>
+          </div>
+        </div>
+        <!-- Status -->
+        <div class="rcard status-card">
+          <div class="status-inner">
+            <div class="rl">Heart Rate Status</div>
+            <span id="status-badge" class="sn">— Waiting —</span>
+            <p id="status-desc">Awaiting first reading from sensor…</p>
+            <span id="status-ts"></span>
+            <span id="last-fb-update"></span>
+          </div>
+        </div>
+      </div>
     </div>
-  </div>
 
-  <div class="card">
-    <div class="slabel">Controls & Configuration</div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap">
-      <button class="btn btn-success" onclick="downloadPDF()">📄 Download PDF</button>
-      <button class="btn btn-primary" onclick="exportCSV()">📊 Export CSV</button>
-      <button class="btn btn-danger" onclick="clearHistory()">🗑 Clear</button>
-      <input id="fb-path-input" style="background:var(--bg2);border:1px solid var(--border);color:var(--primary);padding:8px;border-radius:5px;flex:1" value="/" placeholder="Path (e.g. /sensor)"/>
-      <button class="btn" style="background:var(--surface2);color:var(--text)" onclick="startFirebaseListener()">🔄 Reconnect</button>
+    <!-- Controls -->
+    <div>
+      <div class="slabel">⚙️ Data Source &amp; Controls</div>
+      <div class="card">
+        <div id="data-mode-row">
+          <span style="font-size:0.72rem;color:var(--text-sub);font-weight:600;">Data source:</span>
+          <button class="mode-btn active-firebase" id="btn-mode-firebase" onclick="setMode('firebase')">🔥 Firebase
+            Live</button>
+          <button class="mode-btn" id="btn-mode-sim" onclick="setMode('sim')">🎲 Simulation</button>
+        </div>
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);
+        display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <span style="font-size:0.7rem;color:var(--text-sub);font-weight:600;">Firebase path:</span>
+          <code style="font-family:'JetBrains Mono',monospace;font-size:0.8rem;color:var(--primary);
+          background:rgba(0,194,255,0.08);padding:4px 10px;border-radius:6px;">/live/bpm</code>
+          <span style="font-size:0.7rem;color:var(--text-sub)">Field: <code
+              style="color:var(--accent)">bpm</code></span>
+          <button class="btn btn-outline" style="padding:7px 14px;font-size:0.78rem" onclick="reconnectFirebase()">🔄
+            Reconnect</button>
+        </div>
+        <div
+          style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+          <button class="btn btn-success" onclick="downloadPDF()">📄 Download PDF Report</button>
+          <button class="btn btn-danger" onclick="clearHistory()">🗑 Clear History</button>
+          <button class="btn btn-outline" onclick="exportCSV()">📊 Export CSV</button>
+        </div>
+      </div>
     </div>
-  </div>
 
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
-    <div class="card"><div class="chart-wrapper"><canvas id="bpChart"></canvas></div></div>
-    <div class="card" style="max-height:300px;overflow-y:auto">
-      <table>
-        <thead><tr><th>Time</th><th>SYS</th><th>DIA</th><th>Pulse</th></tr></thead>
-        <tbody id="historyBody"></tbody>
-      </table>
+    <!-- Chart + Table -->
+    <div class="grid2">
+      <div class="card chart-card">
+        <div class="chart-header">
+          <span class="chart-title">📈 BPM Trend</span>
+          <div class="chart-legend">
+            <span><span class="ldot" style="background:var(--accent)"></span>Heart Rate (BPM)</span>
+          </div>
+        </div>
+        <div class="chart-wrapper"><canvas id="bpChart"></canvas></div>
+      </div>
+      <div class="card" style="padding:20px 0 0;">
+        <div style="padding:0 22px 12px;display:flex;justify-content:space-between;align-items:center;">
+          <span class="chart-title">🗂 Reading History</span>
+          <span style="font-size:0.72rem;color:var(--text-sub);" id="readingCount">0 readings</span>
+        </div>
+        <div class="table-wrapper" style="max-height:260px;overflow-y:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Time</th>
+                <th>BPM</th>
+                <th>Status</th>
+                <th>Src</th>
+              </tr>
+            </thead>
+            <tbody id="historyBody"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
-  </div>
-</main>
+  </main>
 
-<div id="toast" style="background:var(--surface2);color:var(--primary);border:1px solid var(--primary)"></div>
+  <footer>Smart BP Monitoring System · Firebase IoT Integration · Heart Rate Live Stream</footer>
+  <div id="toast"></div>
 
-<script>
-// 1. CONFIGURATION
-const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyBuuWDDWoIyxwWNA-OJKXl3_gCpYPuKNj0", // Replace this
-  authDomain: "bp-monitoring-fcfbd.firebaseapp.com",
-  databaseURL: "https://bp-monitoring-fcfbd-default-rtdb.firebaseio.com/",
-  projectId: "bp-monitoring-fcfbd",
-  storageBucket: "bp-monitoring-fcfbd.appspot.com",
-  messagingSenderId: "75015978859", // Replace this
-  appId: "1:75015978859:web:33f965a5cc37c4a8d5162e" // Replace this
-};
+  <script>
+    /* ══════════════════════════════════════════════
+       🔥 FIREBASE CONFIG — your project
+    ══════════════════════════════════════════════ */
+    const FIREBASE_CONFIG = {
+      apiKey: "AIzaSyBuuWDDWoIyxwWNA-OJKXl3_gCpYPuKNj0",           // ← your API key (not needed for public RTDB)
+      authDomain: "bp-monitoring-fcfbd.firebaseapp.com",
+      databaseURL: "https://bp-monitoring-fcfbd-default-rtdb.firebaseio.com",
+      projectId: "bp-monitoring-fcfbd",
+      storageBucket: "bp-monitoring-fcfbd.firebasestorage.app",
+      messagingSenderId: "75015978859",
+      appId: "1:75015978859:web:33f965a5cc37c4a8d5162e"
+    };
+    const FB_PATH = "/live";     // listen to whole /live node
+    const FB_FIELD = "bpm";       // read the `bpm` field
+    /* ══════════════════════════════════════════════ */
 
-let readings = [], chart = null;
-const MAX_HIST = 20;
+    let readings = [], chart = null, currentMode = 'firebase';
+    let simTimer = null, fbListener = null, fbApp = null;
+    const MAX_HIST = 50;
 
-// 2. FIREBASE LOGIC
-function initFirebase() {
-  if (FIREBASE_CONFIG.apiKey.includes("YOUR")) {
-    setFbStatus('disconnected', 'Config Missing');
-    return;
-  }
-  firebase.initializeApp(FIREBASE_CONFIG);
-  startFirebaseListener();
-}
-
-function startFirebaseListener() {
-  const path = document.getElementById('fb-path-input').value;
-  setFbStatus('connecting', 'Linking...');
-  
-  const ref = firebase.database().ref(path);
-  ref.on('value', snap => {
-    const data = snap.val();
-    setFbStatus('connected', 'Live');
-    if (data) {
-        // Handle both single object or nested list
-        let entry = data.latest || data; 
-        if (typeof entry === 'object' && entry.systolic) {
-            updateReadings(entry.systolic, entry.diastolic, entry.pulse);
-        }
+    /* ── Clock ── */
+    function tickClock() {
+      document.getElementById('header-clock').textContent =
+        new Date().toLocaleTimeString('en-IN', { hour12: false });
     }
-  }, err => {
-    setFbStatus('disconnected', 'Error');
-    showToast("Firebase Error: " + err.message);
-  });
-}
+    setInterval(tickClock, 1000); tickClock();
+    document.getElementById('patientDate').value =
+      new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
 
-function setFbStatus(state, text) {
-  const el = document.getElementById('fb-status');
-  el.className = state;
-  document.getElementById('fb-status-text').textContent = text;
-}
+    /* ── Heart rate classification ── */
+    function classifyHR(bpm) {
+      if (bpm < 40) return { label: 'Critical Low', cls: 'sc', badge: '🚨 Critical Low', desc: 'Heart rate dangerously low.', bCls: 'bc' };
+      if (bpm < 60) return { label: 'Low', cls: 'sl', badge: '⬇ Bradycardia', desc: 'Heart rate below normal range.', bCls: 'bl' };
+      if (bpm <= 100) return { label: 'Normal', cls: 'sn', badge: '✅ Normal', desc: 'Heart rate within healthy range.', bCls: 'bn' };
+      if (bpm <= 150) return { label: 'Elevated', cls: 'sh', badge: '⚠ Tachycardia', desc: 'Heart rate above normal — monitor.', bCls: 'bh' };
+      return { label: 'Critical High', cls: 'sc', badge: '🚨 Critical High', desc: 'Heart rate critically elevated!', bCls: 'bc' };
+    }
 
-// 3. UI & DATA LOGIC
-function updateReadings(sys, dia, pulse) {
-  const ts = new Date().toLocaleTimeString();
-  const st = classify(sys, dia);
-  
-  document.getElementById('sysVal').textContent = sys;
-  document.getElementById('diaVal').textContent = dia;
-  document.getElementById('pulseVal').textContent = pulse;
-  
-  const badge = document.getElementById('status-badge');
-  badge.textContent = st.label;
-  badge.className = st.cls;
-  document.getElementById('status-desc').textContent = st.desc;
+    /* ── Update display ── */
+    function updateReadings(bpm, source) {
+      const ts = new Date().toLocaleTimeString('en-IN', { hour12: true });
+      const st = classifyHR(bpm);
+      setVal('pulseVal', bpm);
+      const badge = document.getElementById('status-badge');
+      badge.textContent = st.badge; badge.className = st.cls;
+      document.getElementById('status-desc').textContent = st.desc;
+      document.getElementById('status-ts').textContent = 'Updated: ' + ts;
+      if (source === 'firebase')
+        document.getElementById('last-fb-update').textContent = '⚡ Firebase: ' + ts;
+      setSrcTag('pls-src-tag', source);
+      if (readings.length >= MAX_HIST) readings.shift();
+      readings.push({ ts, bpm, st, source });
+      renderTable(); updateChart();
+      document.getElementById('readingCount').textContent = readings.length + ' readings';
+    }
 
-  readings.push({ts, sys, dia, pulse, label: st.label});
-  if (readings.length > MAX_HIST) readings.shift();
-  
-  renderTable();
-  updateChart();
-}
+    function setVal(id, val) {
+      const el = document.getElementById(id);
+      el.textContent = val;
+      el.classList.remove('num-pop'); void el.offsetWidth; el.classList.add('num-pop');
+    }
 
-function classify(s, d) {
-  if (s > 180 || d > 120) return {label: 'CRITICAL', cls: 'sc', desc: 'Emergency! Seek help.'};
-  if (s >= 140 || d >= 90) return {label: 'HIGH', cls: 'sh', desc: 'Stage 2 Hypertension.'};
-  if (s < 90 || d < 60) return {label: 'LOW', cls: 'sl', desc: 'Lower than normal.'};
-  return {label: 'NORMAL', cls: 'sn', desc: 'Healthy range.'};
-}
+    function setSrcTag(id, src) {
+      const el = document.getElementById(id);
+      if (src === 'firebase') {
+        el.className = 'src-tag src-firebase';
+        el.innerHTML = '<span class="src-dot"></span> Firebase Live';
+      } else {
+        el.className = 'src-tag src-sim';
+        el.innerHTML = '<span class="src-dot"></span> Simulation';
+      }
+    }
 
-function renderTable() {
-  const body = document.getElementById('historyBody');
-  body.innerHTML = readings.slice().reverse().map(r => `
-    <tr><td>${r.ts}</td><td>${r.sys}</td><td>${r.dia}</td><td>${r.pulse}</td></tr>
-  `).join('');
-}
+    /* ── Firebase ── */
+    function setFbStatus(state, text) {
+      const el = document.getElementById('fb-status');
+      const dot = el.querySelector('.fb-dot');
+      el.className = state;
+      dot.className = 'fb-dot' + (state === 'connecting' ? ' pulse-anim' : '');
+      document.getElementById('fb-status-text').textContent = text;
+    }
 
-// 4. CHARTING
-function initChart() {
-  const ctx = document.getElementById('bpChart').getContext('2d');
-  chart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: [],
-      datasets: [
-        { label: 'Sys', data: [], borderColor: '#ff4d6d', tension: 0.4 },
-        { label: 'Dia', data: [], borderColor: '#00c2ff', tension: 0.4 }
-      ]
-    },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-  });
-}
+    function initFirebase() {
+      try {
+        if (!fbApp) fbApp = firebase.initializeApp(FIREBASE_CONFIG);
+        setFbStatus('connecting', 'Connecting…');
+        startFirebaseListener();
+      } catch (e) {
+        setFbStatus('disconnected', 'Init error');
+        showToast('Firebase init error: ' + e.message, 'error');
+      }
+    }
 
-function updateChart() {
-  chart.data.labels = readings.map(r => r.ts);
-  chart.data.datasets[0].data = readings.map(r => r.sys);
-  chart.data.datasets[1].data = readings.map(r => r.dia);
-  chart.update();
-}
+    function startFirebaseListener() {
+      stopFirebaseListener();
+      try {
+        const ref = firebase.database().ref(FB_PATH);
+        fbListener = ref.on('value',
+          snap => {
+            setFbStatus('connected', 'Firebase ✓');
+            const data = snap.val();
+            if (!data) { showToast('No data at ' + FB_PATH, 'info'); return; }
+            // data could be {bpm: 68.18} or just a number
+            let bpm;
+            if (typeof data === 'number') bpm = data;
+            else if (typeof data === 'object') bpm = parseFloat(data[FB_FIELD] || data['bpm'] || 0);
+            else bpm = parseFloat(data);
+            if (!bpm || isNaN(bpm)) {
+              showToast('⚠ Got data but bpm=0 or missing. Keys: ' + JSON.stringify(Object.keys(data || {})), 'error');
+              return;
+            }
+            updateReadings(Math.round(bpm), 'firebase');
+          },
+          err => {
+            setFbStatus('disconnected', 'Auth error');
+            showToast('Firebase error: ' + err.message, 'error');
+          }
+        );
+      } catch (e) {
+        setFbStatus('disconnected', 'Listener error');
+        showToast('RTDB error: ' + e.message, 'error');
+      }
+    }
 
-// 5. EXPORTS
-function downloadPDF() {
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-  doc.text("BP Monitoring Report", 10, 10);
-  readings.forEach((r, i) => doc.text(`${r.ts}: ${r.sys}/${r.dia}`, 10, 20 + (i * 10)));
-  doc.save("report.pdf");
-}
+    function stopFirebaseListener() {
+      if (fbListener) {
+        try { firebase.database().ref(FB_PATH).off('value', fbListener); } catch (e) { }
+        fbListener = null;
+      }
+    }
 
-function exportCSV() {
-  let csv = "Time,Sys,Dia,Pulse\n" + readings.map(r => `${r.ts},${r.sys},${r.dia},${r.pulse}`).join("\n");
-  const blob = new Blob([csv], {type: 'text/csv'});
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url; a.download = 'data.csv'; a.click();
-}
+    function reconnectFirebase() {
+      if (currentMode === 'firebase') { startFirebaseListener(); showToast('🔄 Reconnecting…', 'info'); }
+    }
 
-function showToast(m) {
-  const t = document.getElementById('toast'); t.textContent = m; t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 3000);
-}
+    /* ── Modes ── */
+    function setMode(mode) {
+      currentMode = mode;
+      ['firebase', 'sim'].forEach(m => {
+        document.getElementById('btn-mode-' + m).className =
+          'mode-btn' + (m === mode ? ' active-' + m : '');
+      });
+      if (mode === 'firebase') { stopSim(); initFirebase(); }
+      else { stopFirebaseListener(); setFbStatus('disconnected', 'Offline (Sim)'); startSim(); }
+    }
 
-window.onload = () => { initChart(); initFirebase(); };
-</script>
+    function startSim() { stopSim(); simulateOnce(); simTimer = setInterval(simulateOnce, 3000); }
+    function stopSim() { if (simTimer) { clearInterval(simTimer); simTimer = null; } }
+    function simulateOnce() {
+      updateReadings(Math.round(55 + Math.random() * 60), 'sim');
+    }
+
+    /* ── Chart ── */
+    function initChart() {
+      const ctx = document.getElementById('bpChart').getContext('2d');
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'BPM',
+            data: [],
+            borderColor: '#00ffa3',
+            backgroundColor: 'rgba(0,255,163,0.08)',
+            tension: 0.4,
+            pointRadius: 3,
+            fill: true,
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color: '#6b8aad', font: { size: 10 } }, grid: { color: 'rgba(30,48,80,0.6)' } },
+            y: {
+              ticks: { color: '#6b8aad', font: { size: 10 } },
+              grid: { color: 'rgba(30,48,80,0.6)' },
+              suggestedMin: 40, suggestedMax: 160
+            }
+          }
+        }
+      });
+    }
+
+    function updateChart() {
+      if (!chart) return;
+      const last = readings.slice(-20);
+      chart.data.labels = last.map(r => r.ts);
+      chart.data.datasets[0].data = last.map(r => r.bpm);
+      chart.update('none');
+    }
+
+    /* ── Table ── */
+    function renderTable() {
+      const tbody = document.getElementById('historyBody');
+      tbody.innerHTML = [...readings].reverse().map((r, i) => `
+    <tr>
+      <td style="color:var(--text-dim)">${readings.length - i}</td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:0.75rem">${r.ts}</td>
+      <td style="font-family:'JetBrains Mono',monospace;color:var(--accent);font-weight:600">${r.bpm}</td>
+      <td><span class="badge ${r.st.bCls}">${r.st.label}</span></td>
+      <td class="src-cell ${r.source === 'firebase' ? 'fb' : 'sm'}">${r.source === 'firebase' ? 'FIREBASE' : 'SIM'}</td>
+    </tr>`).join('');
+    }
+
+    /* ── PDF ── */
+    function downloadPDF() {
+      if (!readings.length) { showToast('No readings yet.', 'error'); return; }
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(18); doc.text('Heart Rate Monitoring Report', 105, 18, { align: 'center' });
+      doc.setFontSize(10); doc.setFont('helvetica', 'normal');
+      const name = document.getElementById('patientName').value || 'N/A';
+      const age = document.getElementById('patientAge').value || 'N/A';
+      const genderEl = document.querySelector('input[name="gender"]:checked');
+      const gender = genderEl ? genderEl.value : 'N/A';
+      const date = document.getElementById('patientDate').value;
+      const pid = document.getElementById('patientId').value || 'N/A';
+      const doctor = document.getElementById('doctorName').value || 'N/A';
+      doc.text(`Patient: ${name}  |  Age: ${age}  |  Gender: ${gender}`, 14, 30);
+      doc.text(`Date: ${date}  |  ID: ${pid}  |  Doctor: ${doctor}`, 14, 38);
+      doc.setDrawColor(30, 48, 80); doc.line(14, 44, 196, 44);
+      const last = readings[readings.length - 1];
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(13);
+      doc.text(`Latest BPM: ${last.bpm} — ${last.st.label}`, 14, 54);
+      doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+      doc.text('#    Time               BPM    Status', 14, 64);
+      doc.line(14, 67, 196, 67);
+      readings.slice(-30).forEach((r, i) => {
+        doc.text(`${String(i + 1).padEnd(5)}${r.ts.padEnd(22)}${String(r.bpm).padEnd(7)}${r.st.label}`, 14, 73 + i * 7);
+      });
+      doc.save(`HeartRate_${name.replace(/\s+/g, '_')}_${date}.pdf`);
+      showToast('✅ PDF downloaded.', 'success');
+    }
+
+    /* ── CSV ── */
+    function exportCSV() {
+      if (!readings.length) { showToast('No readings yet.', 'error'); return; }
+      const rows = ['#,Time,BPM,Status,Source',
+        ...readings.map((r, i) => `${i + 1},"${r.ts}",${r.bpm},"${r.st.label}","${r.source}"`)
+      ].join('\n');
+      const a = document.createElement('a');
+      a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(rows);
+      a.download = 'heart_rate_readings.csv'; a.click();
+      showToast('✅ CSV exported.', 'success');
+    }
+
+    function clearHistory() {
+      readings = []; renderTable(); updateChart();
+      document.getElementById('readingCount').textContent = '0 readings';
+      showToast('History cleared.', 'info');
+    }
+
+    /* ── Toast ── */
+    let toastTimer = null;
+    function showToast(msg, type = 'info') {
+      const el = document.getElementById('toast');
+      el.textContent = msg; el.className = type + ' show';
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.remove('show'), 3500);
+    }
+
+    /* ── BMI Calculator ── */
+    function calculateBMI() {
+      const w = parseFloat(document.getElementById('bmiWeight').value);
+      const h = parseFloat(document.getElementById('bmiHeight').value);
+      if (!w || !h || w <= 0 || h <= 0) { showToast('Please enter valid weight and height.', 'error'); return; }
+      const hm = h / 100;
+      const bmi = (w / (hm * hm)).toFixed(1);
+      const el = document.getElementById('bmiVal');
+      el.textContent = bmi;
+      el.classList.remove('num-pop'); void el.offsetWidth; el.classList.add('num-pop');
+      const cat = document.getElementById('bmiCategory');
+      cat.style.display = 'inline-block';
+      const v = parseFloat(bmi);
+      if (v < 18.5) { cat.textContent = 'Underweight'; cat.style.background = 'rgba(0,194,255,0.15)'; cat.style.color = 'var(--primary)'; }
+      else if (v < 25) { cat.textContent = 'Normal'; cat.style.background = 'rgba(0,255,163,0.15)'; cat.style.color = 'var(--accent)'; }
+      else if (v < 30) { cat.textContent = 'Overweight'; cat.style.background = 'rgba(255,159,67,0.15)'; cat.style.color = 'var(--orange)'; }
+      else { cat.textContent = 'Obese'; cat.style.background = 'rgba(255,77,109,0.15)'; cat.style.color = 'var(--red)'; }
+      showToast('BMI: ' + bmi + ' — ' + cat.textContent, 'success');
+    }
+
+    /* ── Boot ── */
+    initChart();
+    initFirebase();
+  </script>
 </body>
+
 </html>
