@@ -4,10 +4,10 @@
 #include "MAX30105.h"
 
 // --- WiFi and Firebase Credentials ---
-#define WIFI_SSID "Xiaomi 11i"
-#define WIFI_PASSWORD "910886206"
-#define FIREBASE_HOST "FILLYOURFIREBASEHOST"
-#define FIREBASE_AUTH "FILLYOURFIREBASEAUTH"
+#define WIFI_SSID      "your_wifi_ssid"
+#define WIFI_PASSWORD  "your_wifi_password"
+#define FIREBASE_HOST  "your-project.firebaseio.com"
+#define FIREBASE_AUTH  "your_firebase_database_secret"
 
 FirebaseData firebaseData;
 FirebaseConfig config;
