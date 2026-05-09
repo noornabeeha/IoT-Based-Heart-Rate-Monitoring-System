@@ -153,7 +153,7 @@ Open `index.html` in any modern browser. Update the Firebase config block inside
 |---|---|
 | Noor Nabeeha | [@noornabeeha](https://github.com/noornabeeha) |
 | Riteesha Banavannavar | [@rit2006](https://github.com/rit2006) |
-| Sneha Shukla | [@rit2006] |
+| Sneha Shukla | [yetToBeFilled] |
 | Kavita Iyer | [@KaviiiitaIyer](https://github.com/KaviiiitaIyer) |
 | Padamshri Deora | [@padamshri](https://github.com/padamshri) |
 
